@@ -23,6 +23,7 @@ public class Debtor implements Serializable {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
+    @Column(unique = true)
     @Basic(optional = false)
     private String name;
 

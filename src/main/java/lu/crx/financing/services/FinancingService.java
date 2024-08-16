@@ -16,6 +16,10 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static java.lang.Math.ceil;
+import static java.lang.Math.toIntExact;
 
 @Slf4j
 @Service
@@ -58,11 +62,11 @@ public class FinancingService {
     }
 
     private int calculateFinancingTermInDays(Invoice invoice, LocalDate currentDate) {
-        return Math.toIntExact(ChronoUnit.DAYS.between(currentDate, invoice.getMaturityDate()));
+        return toIntExact(ChronoUnit.DAYS.between(currentDate, invoice.getMaturityDate()));
     }
 
     private int calculateFinancingRateInBps(PurchaserFinancingSettings purchaserFinancingSettings, int financingTermInDays) {
-        return (purchaserFinancingSettings.getAnnualRateInBps() * financingTermInDays) / 360;
+        return (int) ceil((double)(purchaserFinancingSettings.getAnnualRateInBps() * financingTermInDays) / 360);
     }
 
     private long calculateEarlyPaymentAmountInCents(Invoice invoice, int financingRateInBps) {
@@ -75,17 +79,21 @@ public class FinancingService {
 
         List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository
                 .findEligibleSettings(creditor, financingTermInDays);
-
+        log.info("For Creditor: {} found {} Purchasers: {}", creditor,
+                eligibleSettings.size(),
+                eligibleSettings.stream().map(PurchaserFinancingSettings::getPurchaser).collect(Collectors.toSet()));
         return getPurchaserWithLowestFinancingRate(eligibleSettings, financingTermInDays);
     }
 
     private static Optional<PurchaserFinancingSettings> getPurchaserWithLowestFinancingRate(List<PurchaserFinancingSettings> eligibleSettings,
                                                                                             int financingTermInDays) {
-        return eligibleSettings.stream()
+        Optional<PurchaserFinancingSettings> purchaserWithLowestFinancingRate = eligibleSettings.stream()
                 .min((s1, s2) -> {
-                    int rate1 = (s1.getAnnualRateInBps() * financingTermInDays) / 360;
-                    int rate2 = (s2.getAnnualRateInBps() * financingTermInDays) / 360;
-                    return Integer.compare(rate1, rate2);
+                    double rate1 = (double) (s1.getAnnualRateInBps() * financingTermInDays) / 360;
+                    double rate2 = (double)(s2.getAnnualRateInBps() * financingTermInDays) / 360;
+                    return Double.compare(rate1, rate2);
                 });
+        log.info("Purchasers with the lowest financing rate is: {} ", purchaserWithLowestFinancingRate);
+        return purchaserWithLowestFinancingRate;
     }
 }

@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DebtorRepository extends JpaRepository<Debtor, Long> {
+    Debtor getByName(String name);
 }
