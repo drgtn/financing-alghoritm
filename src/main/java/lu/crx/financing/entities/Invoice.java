@@ -1,19 +1,10 @@
 package lu.crx.financing.entities;
 
+import lombok.*;
+
+import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDate;
-import javax.persistence.Basic;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 /**
  * An invoice issued by the {@link Creditor} to the {@link Debtor} for shipped goods.
@@ -34,13 +25,14 @@ public class Invoice implements Serializable {
     /**
      * Creditor is the entity that issued the invoice.
      */
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+
     private Creditor creditor;
 
     /**
      * Debtor is the entity obliged to pay according to the invoice.
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Debtor debtor;
 
     /**
@@ -55,4 +47,7 @@ public class Invoice implements Serializable {
      */
     @Basic(optional = false)
     private long valueInCents;
+
+    @Basic(optional = false)
+    private boolean financed;
 }

@@ -5,6 +5,7 @@ import lu.crx.financing.services.SeedingService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
@@ -15,9 +16,8 @@ public class AssignmentFinancingApplication {
     }
 
     @Bean
-    public CommandLineRunner run(
-            SeedingService seedingService,
-            FinancingService financingService) {
+    @ConditionalOnProperty(prefix = "job.autorun", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public CommandLineRunner run(SeedingService seedingService, FinancingService financingService) {
 
         return args -> {
             // seeding master data - creditors, debtors and purchasers

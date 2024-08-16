@@ -1,18 +1,9 @@
 package lu.crx.financing.entities;
 
+import lombok.*;
+
+import javax.persistence.*;
 import java.io.Serializable;
-import javax.persistence.Basic;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 /**
  * Financing settings set by the purchaser for a specific creditor.
@@ -30,7 +21,7 @@ public class PurchaserFinancingSettings implements Serializable {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private Creditor creditor;
 
     /**
@@ -38,5 +29,8 @@ public class PurchaserFinancingSettings implements Serializable {
      */
     @Basic(optional = false)
     private int annualRateInBps;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Purchaser purchaser;
 
 }

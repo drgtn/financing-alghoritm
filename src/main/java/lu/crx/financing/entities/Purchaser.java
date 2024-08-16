@@ -1,22 +1,11 @@
 package lu.crx.financing.entities;
 
+import lombok.*;
+
+import javax.persistence.*;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
-import javax.persistence.Basic;
-import javax.persistence.CascadeType;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.Singular;
-import lombok.ToString;
 
 /**
  * Purchaser is an entity (usually a bank) that wants to purchase the invoices. I.e. it issues a loan
@@ -34,7 +23,7 @@ public class Purchaser implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
-
+    @Column(unique = true)
     @Basic(optional = false)
     private String name;
 
@@ -47,8 +36,20 @@ public class Purchaser implements Serializable {
     /**
      * The per-creditor settings for financing.
      */
-    @Singular
-    @OneToMany(cascade = CascadeType.PERSIST)
-    private Set<PurchaserFinancingSettings> purchaserFinancingSettings = new HashSet<>();
+    @OneToMany(mappedBy = "purchaser",
+            orphanRemoval = true,
+            cascade = CascadeType.PERSIST)
+    @ToString.Exclude
+    private final Set<PurchaserFinancingSettings> purchaserFinancingSettings = new HashSet<>();
+
+    public void addPurchaserFinancingSettings(PurchaserFinancingSettings purchaserFinancingSetting) {
+        purchaserFinancingSettings.add(purchaserFinancingSetting);
+        purchaserFinancingSetting.setPurchaser(this);
+    }
+
+    public void removePurchaserFinancingSettings(PurchaserFinancingSettings purchaserFinancingSetting) {
+        purchaserFinancingSettings.remove(purchaserFinancingSetting);
+        purchaserFinancingSetting.setPurchaser(null);
+    }
 
 }
