@@ -55,8 +55,10 @@ class InvoiceRepositoryIT extends BaseIT {
     @Test
     public void testGetAllByFinancedFalse() {
         assertThat(invoiceRepository.findAll()).hasSize(3);
-
-        assertThat(invoiceRepository.getAllByFinancedFalse()).isNotEmpty().hasSize(2).allSatisfy(invoice -> assertThat(invoice.isFinanced()).isFalse());
+        assertThat(invoiceRepository.getAllByFinancedFalse())
+                .isNotEmpty()
+                .hasSize(2)
+                .allSatisfy(invoice -> assertThat(invoice.isFinanced()).isFalse());
     }
 
 

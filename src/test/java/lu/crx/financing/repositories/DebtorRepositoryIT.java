@@ -21,7 +21,7 @@ class DebtorRepositoryIT extends BaseIT {
     }
 
     @Test
-    void testGetByNameNotFound() {
+    void testGetByName_NotFound() {
         debtorRepository.saveAndFlush(aDebtor3());
         assertThat(debtorRepository.getByName("NewDebtor"))
                 .isNull();

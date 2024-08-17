@@ -13,5 +13,5 @@ public interface PurchaserFinancingSettingsRepository extends JpaRepository<Purc
             "WHERE pfs.creditor = :creditor " +
             "AND p.minimumFinancingTermInDays <= :financingTermInDays " +
             "AND (pfs.annualRateInBps * :financingTermInDays) <= (pfs.creditor.maxFinancingRateInBps * 360)")
-    List<PurchaserFinancingSettings> findEligibleSettings(Creditor creditor, int financingTermInDays);
+    List<PurchaserFinancingSettings> findEligiblePurchaserSetting(Creditor creditor, int financingTermInDays);
 }

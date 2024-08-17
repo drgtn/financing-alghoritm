@@ -5,7 +5,7 @@ import lu.crx.financing.entities.Purchaser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import static lu.crx.financing.fixtures.PurchaserFixture.aPurchaser;
+import static lu.crx.financing.fixtures.PurchaserFixture.aPurchaserWithNoSettings;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PurchaserRepositoryTest extends BaseIT {
@@ -14,7 +14,7 @@ class PurchaserRepositoryTest extends BaseIT {
 
     @Test
     void testGetByName() {
-        Purchaser purchaser = purchaserRepository.saveAndFlush(aPurchaser());
+        Purchaser purchaser = purchaserRepository.saveAndFlush(aPurchaserWithNoSettings());
         assertThat(purchaserRepository.getByName("RichBank"))
                 .usingRecursiveComparison()
                 .isEqualTo(purchaser);
@@ -22,7 +22,7 @@ class PurchaserRepositoryTest extends BaseIT {
 
     @Test
     void testGetByNameNotFound() {
-        purchaserRepository.saveAndFlush(aPurchaser());
+        purchaserRepository.saveAndFlush(aPurchaserWithNoSettings());
         assertThat(purchaserRepository.getByName("McDonalds"))
                 .isNull();
     }

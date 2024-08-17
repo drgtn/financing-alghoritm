@@ -21,7 +21,7 @@ class CreditorRepositoryIT extends BaseIT {
     }
 
     @Test
-    void testGetByNameNotFound() {
+    void testGetByName_NotFound() {
         creditorRepository.saveAndFlush(aCreditor3());
         assertThat(creditorRepository.getByName("McDonalds"))
                 .isNull();

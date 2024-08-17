@@ -38,7 +38,8 @@ public class PurchaserFixture {
         megaBank.addPurchaserFinancingSettings(aPurchaserFinancingSettings(45, aCreditor3()));
         return megaBank;
     }
-    public static Purchaser aPurchaser() {
+
+    public static Purchaser aPurchaserWithNoSettings() {
         return Purchaser.builder()
                 .name("RichBank")
                 .minimumFinancingTermInDays(10)

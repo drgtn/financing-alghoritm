@@ -38,7 +38,7 @@ class FinancingServiceIT extends BaseIT {
     }
 
     @Test
-    void testFinancedInvoicedSingleEligiblePurchaser() {
+    void testFinance_SingleEligiblePurchaser() {
         Creditor creditor = creditorRepository.getByName("Coffee Beans LLC");
         Debtor debtor = debtorRepository.getByName("Chocolate Factory");
         Purchaser purchaser = purchaserRepository.getByName("MegaBank");
@@ -61,7 +61,7 @@ class FinancingServiceIT extends BaseIT {
     }
 
     @Test
-    void testFinancedInvoicedMultipleEligiblePurchaser_SelectPurchaserWithLowestFinancingRate() {
+    void testFinance_dMultipleEligiblePurchaser_SelectPurchaserWithLowestFinancingRate() {
         Creditor creditor = creditorRepository.getByName("Beanstalk");
         Debtor debtor = debtorRepository.getByName("ChocoLoco");
         Purchaser purchaser = purchaserRepository.getByName("FatBank");
@@ -82,12 +82,8 @@ class FinancingServiceIT extends BaseIT {
         assertThat(invoice.isFinanced()).isTrue();
     }
 
-    private static ExampleMatcher getExampleMatcherIgnoringId() {
-        return ExampleMatcher.matching().withIgnorePaths("id");
-    }
-
     @Test
-    void testFinancedInvoicedNoPurchaserSettingForCreditor() {
+    void testFinance_NoPurchaserSettingForCreditor() {
         Creditor creditor = creditorRepository.saveAndFlush(Creditor.builder()
                 .name("NewCreditor")
                 .maxFinancingRateInBps(3)
@@ -104,7 +100,7 @@ class FinancingServiceIT extends BaseIT {
     }
 
     @Test
-    void testFinancedInvoicedMultipleEligiblePurchaser_butAlreadyFinanced() {
+    void testFinanceMultipleEligiblePurchaser_butAlreadyFinanced() {
         Creditor creditor = creditorRepository.getByName("Beanstalk");
         Debtor debtor = debtorRepository.getByName("ChocoLoco");
         Invoice invoice = InvoiceFixture.aInvoice12();
@@ -116,5 +112,9 @@ class FinancingServiceIT extends BaseIT {
         assertThat(financedInvoiceRepository.findAll()).isEmpty();
         assertThat(savedInvoice.isFinanced()).isTrue();
         assertThat(financedInvoiceRepository.findAll()).isEmpty();
+    }
+
+    private static ExampleMatcher getExampleMatcherIgnoringId() {
+        return ExampleMatcher.matching().withIgnorePaths("id");
     }
 }

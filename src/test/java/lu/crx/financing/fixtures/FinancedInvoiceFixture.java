@@ -17,6 +17,7 @@ public class FinancedInvoiceFixture {
                 .financingDate(LocalDate.now())
                 .build();
     }
+
     public static FinancedInvoice aFinancedInvoiceFromMultiplePurchaseOption(Invoice invoice, Purchaser purchaser) {
         return FinancedInvoice.builder()
                 .invoice(invoice)

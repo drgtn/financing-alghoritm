@@ -27,20 +27,20 @@ class PurchaserFinancingSettingsRepositoryIT extends BaseIT {
     protected PurchaserRepository purchaserRepository;
 
     @Test
-    public void testFindEligibleSettingsOneOption() {
+    public void testFindEligiblePurchaserSetting_OneOption() {
         seedingService.seedMasterData();
         seedingService.seedInvoices();
         Creditor creditor = creditorRepository.getByName("Coffee Beans LLC");
         Purchaser purchaser = purchaserRepository.getByName("MegaBank");
 
-        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligibleSettings(creditor, 52);
+        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligiblePurchaserSetting(creditor, 52);
         assertThat(eligibleSettings)
                 .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id")
                 .containsExactlyInAnyOrder(aPurchaserFinancingSettings(ANNUAL_RATE_30, creditor, purchaser));
     }
 
     @Test
-    public void testFindEligibleSettingsMultipleOptions() {
+    public void testFindEligiblePurchaserSetting_MultipleOptions() {
         seedingService.seedMasterData();
         seedingService.seedInvoices();
         Creditor creditor = creditorRepository.getByName("Coffee Beans LLC");
@@ -48,7 +48,7 @@ class PurchaserFinancingSettingsRepositoryIT extends BaseIT {
         Purchaser purchaser2 = purchaserRepository.getByName("FatBank");
         Purchaser purchaser3 = purchaserRepository.getByName("MegaBank");
 
-        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligibleSettings(creditor, 33);
+        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligiblePurchaserSetting(creditor, 33);
         assertThat(eligibleSettings)
                 .usingRecursiveFieldByFieldElementComparatorIgnoringFields("id")
                 .containsExactlyInAnyOrder(aPurchaserFinancingSettings(ANNUAL_RATE_50, creditor, purchaser1),
@@ -57,23 +57,35 @@ class PurchaserFinancingSettingsRepositoryIT extends BaseIT {
     }
 
     @Test
-    public void testFindEligibleSettings_InvoiceFinancingTermLowerThanPurchaserMinimumFinancingTerm() {
+    public void testFindEligiblePurchaserSetting_InvoiceFinancingTermLowerThanPurchaserMinimumFinancingTerm() {
         seedingService.seedMasterData();
         seedingService.seedInvoices();
         Creditor creditor = creditorRepository.getByName("Coffee Beans LLC");
 
-        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligibleSettings(creditor, 6);
+        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligiblePurchaserSetting(creditor, 6);
         assertThat(eligibleSettings).isEmpty();
     }
 
     @Test
-    public void testFindEligibleSettings_PurchaserFinancingRateExceedsCreditorMaxRate() {
+    public void testFindEligiblePurchaserSetting_PurchaserFinancingRateExceedsCreditorMaxRate() {
         seedingService.seedMasterData();
         seedingService.seedInvoices();
         Creditor creditor = creditorRepository.getByName("Coffee Beans LLC");
 
-        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligibleSettings(creditor, 70);
+        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligiblePurchaserSetting(creditor, 70);
         assertThat(eligibleSettings).isEmpty();
     }
 
+    @Test
+    public void testFindEligiblePurchaserSetting_NoPurchaserSettingForCreditor() {
+        seedingService.seedMasterData();
+        seedingService.seedInvoices();
+        Creditor creditor = creditorRepository.saveAndFlush(Creditor.builder()
+                .name("NewCreditor")
+                .maxFinancingRateInBps(3)
+                .build());
+
+        List<PurchaserFinancingSettings> eligibleSettings = purchaserFinancingSettingsRepository.findEligiblePurchaserSetting(creditor, 6);
+        assertThat(eligibleSettings).isEmpty();
+    }
 }
