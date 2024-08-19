@@ -99,3 +99,52 @@ is financed, and the **Creditor** already got their money early from the **Purch
   Calculated as `financingRate = annualRate * financingTerm / 360`
 * **Early payment amount** - the amount of money paid by the **Purchaser** to the **Creditor** for the particular
 financed invoice on **financing date**. This amount is less than the value of the invoice.
+
+# Solution
+
+
+### Performance
+This was the challenging part. In the FinancingServicePerformanceIT test class there is a test that persists over 10000
+unpaid invoices and then processes them. With my initial solution (using no batching for processing) I was getting around
+40 seconds on a 10 core workstation. I tried to improve it using indexes on the columns used in the queries like: 
+creditor_id, purchaser_id, minimumFinancingTermInDays, maturityDate, etc, but I didn't notice some big changes.
+So I decided to quit on the part with indexing and I converted the JPQL query into native one, and I was surprised that
+it didn't help a lot as well. However, I didn't investigate why due to lack of time.
+Then I used the batching solution using Pageable, and that gave me over 50% of performance. On my machine I got an average
+of 17 seconds for 10005 unpaid invoices. By the way I used batching as well to persist them initially and I managed to do that
+in less than 4 seconds. However, not sure how the performance will behave on a quad-core workstation.
+And my final step to improve the performance was to use parallel stream processing and I managed to process the same
+amount of invoices in less than 8s. But the downside of the parallel processing is that time to time I was getting
+transaction management issues due to thread safety. It definitely deserves more attention, but it requires
+more time to careful work with transaction concurrency.
+
+Im curious as well what performance we'll get if instead of purchaserFinancingSettingsRepository.findEligiblePurchaserSetting()
+specified query, we'll have purchaserFinancingSettingsRepository.findByCreditor() spring data method, and further
+filtering and calculations we'll be done using java api. Theoretically, fetching a large number of rows from the database
+and processing them in memory would negatively impact performance.
+
+Some more ideas:
+1. Query Optimization
+   Projections: Instead of fetching entire entities, fetch only the required columns using projections.
+2. Use Caching
+   Second-Level Cache: Enable Hibernate’s second-level cache for frequently accessed entities like Creditor, Purchaser,
+   and PurchaserFinancingSettings. This can drastically reduce database load for repeated reads.
+   Or even use some third party caching solutions like Redis, Hazelcast, etc.
+3. Database-Specific Optimizations
+   Analyze Execution Plan: Use database’s explain plan feature to analyze the query execution plan and look for potential bottlenecks.
+4. Database Partitioning
+   If the dataset is large, we should consider partitioning the database tables based on logical criteria (e.g., creditor or purchaser).
+
+### Final notes
+I used Spring Data Jpa whenever possible to get quick results for basic operations.
+
+In order to easily visualize the entity relations and data, I created a docker-compose.yml file that creates a postgres
+instance.
+To use it:
+1. Run  docker compose up -d
+2. From the application.properties file, just comment the properties related to h2 db and uncomment the ones related to postgres.
+
+The IT tests are using a separate h2 db. 
+
+
+

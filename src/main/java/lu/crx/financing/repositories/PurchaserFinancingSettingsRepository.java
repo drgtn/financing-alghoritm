@@ -4,9 +4,10 @@ import lu.crx.financing.entities.Creditor;
 import lu.crx.financing.entities.PurchaserFinancingSettings;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-
+@Repository
 public interface PurchaserFinancingSettingsRepository extends JpaRepository<PurchaserFinancingSettings, Long> {
     @Query("SELECT pfs FROM PurchaserFinancingSettings pfs " +
             "JOIN pfs.purchaser p " +
