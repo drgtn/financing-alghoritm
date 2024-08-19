@@ -6,6 +6,10 @@ import lu.crx.financing.entities.*;
 import lu.crx.financing.repositories.FinancedInvoiceRepository;
 import lu.crx.financing.repositories.InvoiceRepository;
 import lu.crx.financing.repositories.PurchaserFinancingSettingsRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
@@ -22,41 +26,55 @@ import static java.util.stream.Collectors.toSet;
 @Service
 @RequiredArgsConstructor
 public class FinancingService {
+    @Value("${batch.size:1000}")
+    private int batchSize;
     private final InvoiceRepository invoiceRepository;
     private final PurchaserFinancingSettingsRepository purchaserFinancingSettingsRepository;
     private final FinancedInvoiceRepository financedInvoiceRepository;
 
     @Transactional
     public void finance() {
+        Page<Invoice> nonFinancedInvoicesPage;
+        Pageable pageable = PageRequest.of(0, batchSize);
+        do {
+            nonFinancedInvoicesPage = invoiceRepository.getAllByFinancedFalse(pageable);
+            if (nonFinancedInvoicesPage.hasContent()) {
+                processInvoicesBatch(nonFinancedInvoicesPage.getContent());
+                pageable = pageable.next();
+            }
+        } while (nonFinancedInvoicesPage.hasContent());
+    }
+
+    private void processInvoicesBatch(List<Invoice> nonFinancedInvoices) {
         log.info("Financing started");
-        List<Invoice> nonFinancedInvoices = invoiceRepository.getAllByFinancedFalse();
         LocalDate today = LocalDate.now();
-        nonFinancedInvoices.forEach(invoice -> {
-            log.info("Processing invoice: {}", invoice);
-            Optional<PurchaserFinancingSettings> bestFinancingOption = findBestFinancingOption(invoice, today);
-            bestFinancingOption.ifPresentOrElse(purchaserFinancingSettings -> {
-                        int financingTermInDays = calculateFinancingTermInDays(invoice, today);
-                        int financingRateInBps = calculateFinancingRateInBps(purchaserFinancingSettings, financingTermInDays);
-                        long earlyPaymentAmount = calculateEarlyPaymentAmountInCents(invoice, financingRateInBps);
-
-                        FinancedInvoice financingResult = FinancedInvoice.builder()
-                                .invoice(invoice)
-                                .purchaser(purchaserFinancingSettings.getPurchaser())
-                                .financingTermInDays(financingTermInDays)
-                                .financingRateInBps(financingRateInBps)
-                                .financingDate(today)
-                                .earlyPaymentAmountInCents(earlyPaymentAmount)
-                                .build();
-
-                        financedInvoiceRepository.save(financingResult);
-                        invoice.setFinanced(true);
-                        invoiceRepository.save(invoice);
-                        log.info("Invoice {} financed by Purchaser {} at rate {} bps", invoice,
-                                purchaserFinancingSettings.getPurchaser().getName(), financingRateInBps);
-                    },
-                    () -> log.info("No eligible Purchaser found for Invoice {}", invoice.getId()));
-        });
+        nonFinancedInvoices.forEach(invoice -> processSingleInvoice(invoice, today));
         log.info("Financing completed");
+    }
+
+    private void processSingleInvoice(Invoice invoice, LocalDate today) {
+        log.info("Processing invoice: {}", invoice);
+        Optional<PurchaserFinancingSettings> bestFinancingOption = findBestFinancingOption(invoice, today);
+        bestFinancingOption.ifPresentOrElse(purchaserFinancingSettings -> {
+                    int financingTermInDays = calculateFinancingTermInDays(invoice, today);
+                    int financingRateInBps = calculateFinancingRateInBps(purchaserFinancingSettings, financingTermInDays);
+                    long earlyPaymentAmount = calculateEarlyPaymentAmountInCents(invoice, financingRateInBps);
+
+                    FinancedInvoice financingResult = FinancedInvoice.builder()
+                            .invoice(invoice)
+                            .purchaser(purchaserFinancingSettings.getPurchaser())
+                            .financingTermInDays(financingTermInDays)
+                            .financingRateInBps(financingRateInBps)
+                            .financingDate(today)
+                            .earlyPaymentAmountInCents(earlyPaymentAmount)
+                            .build();
+
+                    financedInvoiceRepository.save(financingResult);
+                    invoice.setFinanced(true);
+                    log.info("Invoice {} financed by Purchaser {} at rate {} bps", invoice,
+                            purchaserFinancingSettings.getPurchaser().getName(), financingRateInBps);
+                },
+                () -> log.info("No eligible Purchaser found for Invoice {}", invoice.getId()));
     }
 
     private int calculateFinancingTermInDays(Invoice invoice, LocalDate currentDate) {

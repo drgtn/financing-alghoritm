@@ -7,6 +7,7 @@ import lu.crx.financing.entities.Invoice;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 
 import static lu.crx.financing.fixtures.CreditorFixture.aCreditor1;
 import static lu.crx.financing.fixtures.DebtorFixture.*;
@@ -55,11 +56,9 @@ class InvoiceRepositoryIT extends BaseIT {
     @Test
     public void testGetAllByFinancedFalse() {
         assertThat(invoiceRepository.findAll()).hasSize(3);
-        assertThat(invoiceRepository.getAllByFinancedFalse())
+        assertThat(invoiceRepository.getAllByFinancedFalse(PageRequest.of(0, 2)))
                 .isNotEmpty()
                 .hasSize(2)
                 .allSatisfy(invoice -> assertThat(invoice.isFinanced()).isFalse());
     }
-
-
 }

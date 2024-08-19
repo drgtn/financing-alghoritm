@@ -4,20 +4,21 @@ import lu.crx.financing.entities.*;
 import lu.crx.financing.repositories.FinancedInvoiceRepository;
 import lu.crx.financing.repositories.InvoiceRepository;
 import lu.crx.financing.repositories.PurchaserFinancingSettingsRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.Math.toIntExact;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.List.of;
 import static lu.crx.financing.fixtures.FinancedInvoiceFixture.aFinancedInvoiceFromMultiplePurchaseOption;
@@ -26,6 +27,7 @@ import static lu.crx.financing.fixtures.PurchaserFinancingSettingsFixture.aPurch
 import static lu.crx.financing.fixtures.PurchaserFixture.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 @ExtendWith(MockitoExtension.class)
 class FinancingServiceTest {
@@ -34,14 +36,19 @@ class FinancingServiceTest {
     private static final int ANNUAL_RATE_45 = 45;
     @InjectMocks
     private FinancingService financingService;
-    @Mock
+    @Spy
     private InvoiceRepository invoiceRepository;
     @Mock
     private PurchaserFinancingSettingsRepository purchaserFinancingSettingsRepository;
     @Mock
     private FinancedInvoiceRepository financedInvoiceRepository;
     @Captor
-    private ArgumentCaptor<FinancedInvoice> captor;
+    private ArgumentCaptor<FinancedInvoice> financedInvoiceArgumentCaptor;
+
+    @BeforeEach
+    void setUp() {
+        setField(financingService, "batchSize", 10);
+    }
 
     @Test
     void testFinance() {
@@ -51,24 +58,29 @@ class FinancingServiceTest {
         Purchaser purchaser2 = aPurchaser2();
         Purchaser purchaser3 = aPurchaser3();
         int financingTermInDays = calculateFinancingTermInDays(invoice, LocalDate.now());
-        List<Invoice> invoices = of(invoice);
-        when(invoiceRepository.getAllByFinancedFalse()).thenReturn(invoices);
-        List<PurchaserFinancingSettings> purchaserFinancingSettingsList = Arrays.asList(
+
+        List<PurchaserFinancingSettings> purchaserFinancingSettingsList = asList(
                 aPurchaserFinancingSettings(ANNUAL_RATE_30, creditor, purchaser1),
                 aPurchaserFinancingSettings(ANNUAL_RATE_25, creditor, purchaser2),
                 aPurchaserFinancingSettings(ANNUAL_RATE_45, creditor, purchaser3));
-        when(purchaserFinancingSettingsRepository
-                .findEligiblePurchaserSetting(creditor, financingTermInDays)).thenReturn(purchaserFinancingSettingsList);
+
+        Page<Invoice> firstPage = new PageImpl<>(of(invoice));
+        Page<Invoice> secondPage = new PageImpl<>(emptyList());
+        PageableMatcher firstPageable = new PageableMatcher(0, 10);
+        PageableMatcher secondPageable = new PageableMatcher(1, 10);
+
+        when(invoiceRepository.getAllByFinancedFalse(argThat(firstPageable))).thenReturn(firstPage);
+        when(invoiceRepository.getAllByFinancedFalse(argThat(secondPageable))).thenReturn(secondPage);
+        when(purchaserFinancingSettingsRepository.findEligiblePurchaserSetting(creditor, financingTermInDays))
+                .thenReturn(purchaserFinancingSettingsList);
 
         financingService.finance();
+        verify(invoiceRepository).getAllByFinancedFalse(argThat(firstPageable));
+        verify(invoiceRepository).getAllByFinancedFalse(argThat(secondPageable));
+        verify(purchaserFinancingSettingsRepository).findEligiblePurchaserSetting(creditor, financingTermInDays);
+        verify(financedInvoiceRepository).save(financedInvoiceArgumentCaptor.capture());
 
-        verify(invoiceRepository).getAllByFinancedFalse();
-        verify(purchaserFinancingSettingsRepository)
-                .findEligiblePurchaserSetting(creditor, financingTermInDays);
-        verify(financedInvoiceRepository).save(captor.capture());
-        verify(invoiceRepository).save(invoice);
-
-        assertThat(captor.getValue())
+        assertThat(financedInvoiceArgumentCaptor.getValue())
                 .usingRecursiveComparison()
                 .isEqualTo(aFinancedInvoiceFromMultiplePurchaseOption(invoice, purchaser2));
         assertThat(invoice.isFinanced()).isTrue();
@@ -76,11 +88,14 @@ class FinancingServiceTest {
 
     @Test
     void testFinance_InvoicesAlreadyFinanced() {
-        when(invoiceRepository.getAllByFinancedFalse()).thenReturn(emptyList());
+        Page<Invoice> firstPage = new PageImpl<>(emptyList());
+        PageableMatcher firstPageable = new PageableMatcher(0, 10);
+
+        when(invoiceRepository.getAllByFinancedFalse(argThat(firstPageable))).thenReturn(firstPage);
 
         financingService.finance();
 
-        verify(invoiceRepository).getAllByFinancedFalse();
+        verify(invoiceRepository).getAllByFinancedFalse(argThat(firstPageable));
         verifyNoInteractions(purchaserFinancingSettingsRepository);
         verifyNoInteractions(financedInvoiceRepository);
         verify(invoiceRepository, never()).save(any());
@@ -88,5 +103,15 @@ class FinancingServiceTest {
 
     private int calculateFinancingTermInDays(Invoice invoice, LocalDate currentDate) {
         return toIntExact(ChronoUnit.DAYS.between(currentDate, invoice.getMaturityDate()));
+    }
+
+    private record PageableMatcher(int expectedPage, int expectedSize) implements ArgumentMatcher<Pageable> {
+        @Override
+        public boolean matches(Pageable pageable) {
+            if (pageable == null) {
+                return false;
+            }
+            return pageable.getPageNumber() == expectedPage && pageable.getPageSize() == expectedSize;
+        }
     }
 }
